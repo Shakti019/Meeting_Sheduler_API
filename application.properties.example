@@ -1,0 +1,12 @@
+spring.application.name=Meeting Scheduler API
+server.port=8080
+
+# MongoDB Atlas Configuration
+# Replace with your actual MongoDB connection string
+spring.data.mongodb.uri=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/DATABASE_NAME?retryWrites=true&w=majority
+spring.data.mongodb.auto-index-creation=true
+
+# JWT Configuration
+# Generate a strong secret key (keep this secret!)
+jwt.secret=YOUR_SECRET_KEY_HERE
+jwt.expiration=86400000
