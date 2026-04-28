@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Event - MeetFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    
+    <!-- Navbar -->
+    <nav class="bg-indigo-600 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 flex items-center text-white">
+                    <a href="/dashboard" class="text-2xl font-bold flex items-center gap-2 hover:opacity-80 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+            <h1 class="text-3xl font-bold text-slate-900 mb-6">Create New Event</h1>
+            
+            <form id="scheduleForm" class="space-y-6">
+                <!-- Notifications -->
+                <div id="alertArea" class="hidden rounded-md p-4 mb-4">
+                    <p class="text-sm font-medium" id="alertText"></p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-slate-700">Event Name</label>
+                        <input id="title" name="title" type="text" required placeholder="e.g., 30 Min Discovery Call"
+                               class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition">
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-slate-700">Description / Instructions</label>
+                        <textarea id="description" name="description" rows="3" placeholder="Write a summary and any details your invitee should know."
+                               class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="startTime" class="block text-sm font-medium text-slate-700">Start Time <span class="text-slate-400 font-normal italic">(AM/PM)</span></label>
+                            <input id="startTime" name="startTime" type="datetime-local" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition">
+                            <p id="startClue" class="text-xs text-indigo-600 mt-1.5 font-medium hidden bg-indigo-50 px-2 py-1 rounded border border-indigo-100"></p>
+                        </div>
+                        <div>
+                            <label for="endTime" class="block text-sm font-medium text-slate-700">End Time <span class="text-slate-400 font-normal italic">(AM/PM)</span></label>
+                            <input id="endTime" name="endTime" type="datetime-local" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-slate-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition">
+                            <p id="endClue" class="text-xs text-indigo-600 mt-1.5 font-medium hidden bg-indigo-50 px-2 py-1 rounded border border-indigo-100"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Add Panel Members (Attendees)</label>
+                        <div class="relative">
+                            <input id="userSearch" type="text" placeholder="Search by name or email..." 
+                                   class="block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition">
+                            <div id="userDropdown" class="absolute z-10 w-full mt-1 bg-white shadow-lg max-h-48 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm hidden">
+                                <!-- Users list populated by JS -->
+                            </div>
+                        </div>
+                        
+                        <div id="selectedMembers" class="mt-3 flex flex-wrap gap-2">
+                            <!-- Selected bubble items will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3">
+                    <a href="/dashboard" class="px-5 py-2.5 bg-white border border-slate-300 rounded-xl shadow-sm text-sm font-bold text-slate-700 hover:bg-slate-50 transition">Cancel</a>
+                    <button type="submit" id="submitBtn" 
+                            class="px-5 py-2.5 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition shadow-md">
+                        Save Event
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        const updateClueUI = (inputId, clueId) => {
+            const input = document.getElementById(inputId);
+            const clue = document.getElementById(clueId);
+            input.addEventListener('input', () => {
+                if (!input.value) {
+                    clue.classList.add('hidden');
+                    return;
+                }
+                const date = new Date(input.value);
+                const hr = date.getHours();
+                let timeOfDay = 'Night';
+                if (hr >= 5 && hr < 12) timeOfDay = 'Morning';
+                else if (hr >= 12 && hr < 17) timeOfDay = 'Afternoon';
+                else if (hr >= 17 && hr < 21) timeOfDay = 'Evening';
+                
+                clue.innerHTML = `Selected: <strong>${date.toLocaleString([], {dateStyle:'medium', timeStyle:'short'})}</strong> (${timeOfDay})`;
+                clue.classList.remove('hidden');
+            });
+        };
+
+        updateClueUI('startTime', 'startClue');
+        updateClueUI('endTime', 'endClue');
+
+        let allUsers = [];
+        let allMeetings = [];
+        let selectedAttendees = new Set();
+        
+        const loadUsersAndMeetings = async () => {
+            try {
+                const rs1 = await fetch('/api/auth/users', { headers: { 'Authorization': 'Bearer ' + token }});
+                if(rs1.ok) allUsers = await rs1.json();
+
+                const rs2 = await fetch('/api/meetings', { headers: { 'Authorization': 'Bearer ' + token }});
+                if(rs2.ok) allMeetings = await rs2.json();
+            } catch(e) { console.error('Failed fetching data', e); }
+        };
+        loadUsersAndMeetings();
+
+        const searchInput = document.getElementById('userSearch');
+        const dropdown = document.getElementById('userDropdown');
+        const selectedMemDiv = document.getElementById('selectedMembers');
+
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            dropdown.innerHTML = '';
+            if(!val) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            
+            const filtered = allUsers.filter(u => 
+                (u.email.toLowerCase().includes(val) || (u.name && u.name.toLowerCase().includes(val))) 
+                && !selectedAttendees.has(u.email)
+            );
+
+            if(filtered.length === 0) {
+                dropdown.innerHTML = '<div class="px-4 py-2 text-slate-500">No users found</div>';
+                dropdown.classList.remove('hidden');
+                return;
+            }
+
+            const startVal = document.getElementById('startTime').value;
+            const endVal = document.getElementById('endTime').value;
+            const currentStart = startVal ? new Date(startVal) : null;
+            const currentEnd = endVal ? new Date(endVal) : null;
+
+            filtered.forEach(u => {
+                let isBusy = false;
+                let busyMeeting = null;
+                
+                if (currentStart && currentEnd && currentStart < currentEnd) {
+                    busyMeeting = allMeetings.find(m => {
+                        if(!m.startTime || !m.endTime) return false;
+                        const mst = new Date(m.startTime);
+                        const met = new Date(m.endTime);
+                        const overlaps = (currentStart < met) && (currentEnd > mst);
+                        const involved = [m.organizerEmail, ...(m.panelMembers || [])];
+                        return overlaps && involved.includes(u.email);
+                    });
+                    if (busyMeeting) isBusy = true;
+                }
+
+                const div = document.createElement('div');
+                if (isBusy) {
+                    const bStart = new Date(busyMeeting.startTime).toLocaleTimeString([], {timeStyle:'short'});
+                    const bEnd = new Date(busyMeeting.endTime).toLocaleTimeString([], {timeStyle:'short'});
+                    div.className = 'select-none relative py-2 pl-3 pr-9 bg-slate-50 opacity-60 cursor-not-allowed';
+                    div.innerHTML = `
+                        <span class="block truncate font-medium text-slate-500">${u.name || u.email.split('@')[0]}</span>
+                        <span class="block truncate text-xs text-red-500 font-bold mt-0.5">Busy / Booked (${bStart} - ${bEnd})</span>
+                    `;
+                } else {
+                    div.className = 'cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 hover:text-indigo-900';
+                    div.innerHTML = `<span class="block truncate font-medium">${u.name || u.email.split('@')[0]}</span><span class="block truncate text-sm text-slate-500">${u.email}</span>`;
+                    div.onclick = () => {
+                        selectedAttendees.add(u.email);
+                        renderSelected();
+                        searchInput.value = '';
+                        dropdown.classList.add('hidden');
+                    };
+                }
+                dropdown.appendChild(div);
+            });
+            dropdown.classList.remove('hidden');
+        });
+
+        // Close dropdown when picking outside
+        document.addEventListener('click', (e) => {
+            if(!searchInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden');
+        });
+
+        const renderSelected = () => {
+            selectedMemDiv.innerHTML = '';
+            selectedAttendees.forEach(email => {
+                const el = document.createElement('span');
+                el.className = 'inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-sm font-medium text-indigo-700';
+                el.innerHTML = `${email} <button type="button" class="ml-1.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500" onclick="removeAttendee('${email}')">×</button>`;
+                selectedMemDiv.appendChild(el);
+            });
+        };
+        
+        window.removeAttendee = (email) => {
+            selectedAttendees.delete(email);
+            renderSelected();
+        };
+
+        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const startTimeInput = document.getElementById('startTime').value;
+            const endTimeInput = document.getElementById('endTime').value;
+            
+            const btn = document.getElementById('submitBtn');
+            const alertArea = document.getElementById('alertArea');
+            const alertText = document.getElementById('alertText');
+
+            btn.disabled = true;
+            btn.innerHTML = 'Saving...';
+            alertArea.className = 'hidden rounded-md p-4 mb-4';
+
+            try {
+                const start = new Date(startTimeInput);
+                const end = new Date(endTimeInput);
+                const now = new Date();
+                
+                if (start < now) {
+                    throw new Error("Cannot schedule a meeting in the past.");
+                }
+                if (end <= start) {
+                    throw new Error("End time must be after Start time.");
+                }
+
+                const toLocalISOString = (date) => {
+                    const pad = (n) => String(n).padStart(2, '0');
+                    return date.getFullYear() + '-' +
+                           pad(date.getMonth() + 1) + '-' +
+                           pad(date.getDate()) + 'T' +
+                           pad(date.getHours()) + ':' +
+                           pad(date.getMinutes()) + ':00';
+                };
+
+                const payload = {
+                    title: title,
+                    description: description,
+                    startTime: toLocalISOString(start),
+                    endTime: toLocalISOString(end),
+                    panelMembers: Array.from(selectedAttendees)
+                };
+
+                const response = await fetch('/api/meetings', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alertArea.className = 'rounded-md p-4 mb-4 bg-green-50 text-green-800';
+                    alertText.textContent = 'Event successfully created! Redirecting...';
+                    setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+                } else if (response.status === 401 || response.status === 403) {
+                    // Token expired
+                    localStorage.removeItem('token');
+                    window.location.href = '/login';
+                } else {
+                    const errText = await response.text();
+                    alertArea.className = 'rounded-md p-4 mb-4 bg-red-50 text-red-800';
+                    alertText.textContent = 'Failed to create event. ' + errText;
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Event';
+                }
+            } catch (err) {
+                alertArea.className = 'rounded-md p-4 mb-4 bg-red-50 text-red-800';
+                alertText.textContent = err.message || 'An error occurred connecting to the server.';
+                btn.disabled = false;
+                btn.innerHTML = 'Save Event';
+            }
+        });
+    </script>
+</body>
+</html>

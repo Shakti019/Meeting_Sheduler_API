@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetFlow - Professional Scheduling</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 flex items-center">
+                    <span class="text-2xl font-bold text-indigo-600">MeetFlow</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/login" class="text-slate-600 hover:text-indigo-600 font-medium transition">Log in</a>
+                    <a href="/register" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition shadow-sm">Get Started</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-6">
+            Scheduling <span class="text-indigo-600">made simple</span>.
+        </h1>
+        <p class="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+            MeetFlow connects with your calendar and automates the hassle of finding the right time to meet.
+        </p>
+        <div class="flex justify-center space-x-4">
+            <a href="/register" class="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
+                Sign Up for Free
+            </a>
+            <a href="/login" class="bg-white text-slate-700 border border-slate-300 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 transition shadow-sm">
+                Login to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-redirect to dashboard if token exists
+        if(localStorage.getItem('token')) {
+            window.location.href = '/dashboard';
+        }
+    </script>
+</body>
+</html>

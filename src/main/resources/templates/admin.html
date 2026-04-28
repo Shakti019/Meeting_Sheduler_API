@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MeetFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    
+    <!-- Navbar -->
+    <nav class="bg-gray-800 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 flex items-center text-white">
+                    <span class="text-2xl font-bold text-indigo-400">MeetFlow</span>
+                    <span class="ml-3 px-2 py-0.5 bg-gray-700 text-xs font-bold rounded text-white uppercase tracking-wide">Admin</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/dashboard" class="text-gray-300 hover:text-white font-medium transition">User Dashboard</a>
+                    <button id="logoutBtn" class="bg-gray-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition shadow-sm">
+                        Log out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-slate-900">
+        
+        <div class="mb-8 border-b border-slate-200 pb-4">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900">System Meetings Registry</h1>
+            <p class="mt-2 text-sm text-slate-500">View all created events across the platform (Global View).</p>
+        </div>
+
+        <!-- Table View -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Event ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Organizer</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Title</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Description</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Start Time</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">End Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody" class="bg-white divide-y divide-slate-200">
+                        <tr>
+                            <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-500">Loading system data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        });
+
+        async function fetchAllMeetings() {
+            const tableBody = document.getElementById('adminTableBody');
+
+            try {
+                const res = await fetch('/api/meetings', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-sm text-red-500 font-medium">Access Denied: You do not have permissions to view this.</td></tr>';
+                    return;
+                }
+
+                if (!res.ok) throw new Error('API Error');
+                
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-sm text-slate-500">No events exist on the server.</td></tr>';
+                } else {
+                    // Sort the events chronologically by start time (newest first)
+                    data.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+                    tableBody.innerHTML = '';
+                    data.forEach(meeting => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-50 transition";
+                        
+                        const getFriendlyTime = (date) => {
+                            const hr = date.getHours();
+                            if (hr >= 5 && hr < 12) return 'Morning';
+                            if (hr >= 12 && hr < 17) return 'Afternoon';
+                            if (hr >= 17 && hr < 21) return 'Evening';
+                            return 'Night';
+                        };
+
+                        const formatTime = (dateStr) => {
+                            if (!dateStr) return 'N/A';
+                            const date = new Date(dateStr);
+                            return `${date.toLocaleString([], {dateStyle:'medium', timeStyle:'short'})} <span class="text-xs text-slate-400 font-normal">(${getFriendlyTime(date)})</span>`;
+                        };
+                        
+                        const startDisplay = formatTime(meeting.startTime);
+                        const endDisplay = formatTime(meeting.endTime);
+                        const descDisplay = meeting.description && meeting.description.length > 25 ? meeting.description.substring(0, 25) + '...' : (meeting.description || 'None');
+
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${meeting.id || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${meeting.organizerEmail || 'Missing Email'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 flex items-center gap-2"><span class="w-2 h-2 rounded-full ${new Date(meeting.startTime) > new Date() ? 'bg-green-500' : 'bg-slate-300'}"></span> ${meeting.title || 'Untitled Event'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500" title="${meeting.description || ''}">${descDisplay}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-medium">${startDisplay}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-medium">${endDisplay}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                }
+
+            } catch (err) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-sm text-red-500">Failed to load server data. Make sure the API is running.</td></tr>';
+            }
+        }
+
+        fetchAllMeetings();
+    </script>
+</body>
+</html>

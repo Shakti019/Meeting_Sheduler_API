@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Meeting Room</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .transcript-box {
+            height: 400px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        .interim {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .final {
+            color: #212529;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 th:text="${meeting.title}">Meeting Title</h2>
+            <p class="text-muted" th:text="${meeting.description}">Meeting Description</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button id="startBtn" class="btn btn-success btn-lg">Start AssemblyAI</button>
+            <button id="stopBtn" class="btn btn-danger btn-lg" disabled>End Meeting</button>
+        </div>
+    </div>
+
+    <!-- Live Transcript Area -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Live Transcript (Powered by AssemblyAI)</h5>
+                </div>
+                <div class="card-body">
+                    <div id="transcriptBox" class="transcript-box">
+                        <p class="text-muted m-0" id="placeholderMsg">Waiting to start transcription...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+<script th:inline="javascript">
+    const meetingId = /*[[${meeting.id}]]*/ 'test-id';
+    
+    let socket;
+    let recordRTC;
+    let fullTranscript = "";
+    
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const transcriptBox = document.getElementById('transcriptBox');
+    const placeholderMsg = document.getElementById('placeholderMsg');
+
+    // 1. Audio Recording State
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const initializeAudio = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = event => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = uploadAssemblyAI;
+            
+            mediaRecorder.start();
+            
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            startBtn.innerText = "Recording Audio...";
+            placeholderMsg.innerText = "Recording in progress... Audio will be uploaded automatically at the end of the meeting.";
+            
+        } catch (error) {
+            console.error("Microphone access denied:", error);
+            alert("Microphone access is required to transcribe the meeting.");
+        }
+    };
+
+    const stopMeeting = () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop(); // Triggers onstop -> uploadAssemblyAI
+        }
+        
+        stopBtn.disabled = true;
+        stopBtn.innerText = "Processing AI Upload...";
+    };
+
+    const uploadAssemblyAI = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append("file", audioBlob, "meeting_audio.webm");
+
+        try {
+            placeholderMsg.innerText = "Meeting ended. Uploading Audio directly to AssemblyAI via Backend... You can leave this page or wait.";
+
+            await fetch(`/meeting/api/${meetingId}/end`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            alert("File successfully uploaded! AssemblyAI is now generating the text and passing it to n8n.");
+            window.location.href = '/dashboard';
+            
+        } catch (error) {
+            console.error("Failed to upload audio", error);
+            alert("Failed to submit recorded audio.");
+            stopBtn.disabled = false;
+            stopBtn.innerText = "Retry End Meeting";
+        }
+    };
+
+    startBtn.addEventListener('click', initializeAudio);
+    stopBtn.addEventListener('click', stopMeeting);
+
+</script>
+</body>
+</html>

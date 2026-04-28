@@ -26,6 +26,10 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/health").permitAll()
+                .requestMatchers("/api/assemblyai/**", "/meeting/**").permitAll()
+                .requestMatchers("/api/webhook/n8n/**", "/api/e2e-test/**").permitAll()
+                .requestMatchers("/", "/login", "/register", "/dashboard", "/schedule", "/edit/**", "/admin").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
